@@ -23,8 +23,3 @@ def search_documents(query: str, top_k: int = 3):
     """Поиск информации по запросу"""
     results = collection.query(query_texts=[query], n_results=top_k)
     return results["documents"]
-
-# Тестовый запуск
-if __name__ == "__main__":
-    add_document("Мона Лиза — картина Леонардо да Винчи, хранится в Лувре.", "louvre")
-    print(search_documents("Кто автор Моны Лизы?"))
