@@ -118,7 +118,7 @@ def search_artworks_by_museum(museum_name):
                wdt:P276 wd:{museum_qid}.
       SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
     }}
-    LIMIT 200
+    LIMIT 20
     """
     headers = {"User-Agent": "MuseumDataCollector/1.0"}
     response = requests.get(WIKIDATA_SPARQL_URL, params={"query": query, "format": "json"}, headers=headers)

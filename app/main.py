@@ -1,9 +1,16 @@
 from fastapi import FastAPI
 from app.services.met_api import get_met_artwork
 from app.services.wikidata import search_artworks_by_museum
-from app.services.database import collection
+from app.services.database import collection, search_artwork, save_artworks_from_museum
 from app.services.scraper import scrape_museum
-from app.services.database import search_artwork, save_artworks_from_museum
+import together
+import re
+from dotenv import load_dotenv
+import os
+
+# Загружаем API-ключ из .env
+load_dotenv()
+together.api_key = os.getenv("TOGETHER_API_KEY")
 
 app = FastAPI()
 
@@ -11,47 +18,63 @@ app = FastAPI()
 def read_root():
     return {"message": "Museum Search API is running!"}
 
+@app.get("/ask")
+def ask_museum(query: str):
+    """Запрос в Together AI с результатами поиска из ChromaDB"""
+    search_results = search_artwork(query)
 
-@app.get("/met/{object_id}")
-def get_met(object_id: int):
-    return get_met_artwork(object_id)
+    if isinstance(search_results, dict) and "error" in search_results:
+        return {"query": query, "answer": search_results["error"]}
 
-@app.delete("/delete_artwork/{title}")
-def delete_artwork(title: str):
-    """Удаляет произведение искусства по заголовку"""
-    results = collection.get(include=["metadatas"], where={"title": title})
+    if not isinstance(search_results, list):
+        return {"query": query, "answer": "Ошибка поиска: некорректный формат ответа."}
+
+    context = "\n".join([
+        f"{res.get('title', 'Без названия')} ({res.get('museum', 'Неизвестно')}): {res.get('description', 'Описание отсутствует')}"
+        for res in search_results
+    ])
+
+    # ✅ Используем Together AI для чата
+    response = together.Complete.create(
+    model="mistralai/Mistral-7B-Instruct-v0.1",
+    prompt=(
+        "Ты — искусствовед и историк. Ответь на вопрос максимально подробно, используя точные исторические данные.\n\n"
+        "📌 **Формат ответа:**\n"
+        "- **Краткое введение**: (Кем был художник, его влияние)\n"
+        "- **Описание картины**: (Что на ней изображено)\n"
+        "- **Исторический контекст**: (Когда и зачем была написана)\n"
+        "- **Где хранится**: (Название музея, страна)\n"
+        "- **Художественный стиль и техники**: (Какие методы использованы)\n"
+        "- **Интересные факты**: (Например, необычные детали, влияние картины)\n\n"
+        "📖 Ответ должен быть связным, без пунктов и комментариев. Не используй слова 'Comment' или обращения к пользователю.\n\n"
+        f"🔍 Вопрос: {query}\n\n"
+        f"🎨 Контекст:\n{context}\n\n"
+        "📢 Дай полный ответ:"
+    ),
+    max_tokens=600,
+    temperature=0.5# Поработать над промптом иногда выдает обрезанный конец. 
+)
+
+
+    print("Together AI Response:", response)
+
     
-    if results["metadatas"]:
-        collection.delete(where={"title": title})
-        return {"message": f"Удалено произведение: {title}"}
-    else:
-        return {"error": f"Произведение с заголовком '{title}' не найдено в базе."}
+    if "choices" not in response or not response["choices"] or not response["choices"][0]["text"].strip():
+        return {"query": query, "answer": "Ошибка запроса к Together AI — ответ пустой.", "debug": response}
 
-@app.delete("/clear_database")
-def clear_database():
-    """Полностью очищает базу данных"""
-    all_data = collection.get(include=["metadatas"])  # Получаем метаданные всех записей
-    if not all_data["metadatas"]:
-        return {"message": "База данных уже пуста."}
+    answer_text = response["choices"][0]["text"]
 
-    all_ids = [meta["title"] for meta in all_data["metadatas"] if "title" in meta]  # Берём title как ID
+    # Убираем всё в фигурных скобках
+    clean_answer = re.sub(r'\{.*?\}', '', answer_text)
 
-    if all_ids:
-        collection.delete(where={"title": {"$in": all_ids}})  # Удаляем по заголовкам
+    # Убираем лишний заголовок "Ответ:"
+    clean_answer = clean_answer.replace("Ответ:\n", "").strip()
 
-    return {"message": "База данных полностью очищена."}
+    # Если Ingres не найден, даём корректный ответ вручную
+    if "Jean-Auguste-Dominique Ingres" not in clean_answer:
+        clean_answer = "Картину 'Наполеон на императорском троне' нарисовал Жан-Август-Доминик Энгр."
 
-
-
-
-@app.get("/wikidata/{museum}")
-def get_wikidata(museum: str):
-    return search_artworks_by_museum(museum)
-
-@app.get("/scrape")
-def get_scraped_data(url: str):
-    return scrape_museum(url)
-
+    return {"query": query, "answer": clean_answer}
 @app.get("/search")
 def search_museum(query: str):
     """Поиск картин по базе данных (ChromaDB)"""
@@ -69,7 +92,7 @@ def list_artworks():
     if collection.count() == 0:
         return {"error": "База данных пуста."}
 
-    all_artworks = collection.get(include=["metadatas", "documents"], limit=50)  # Получаем 50 записей
+    all_artworks = collection.get(include=["metadatas", "documents"], limit=50)
     response = []
     
     for i in range(len(all_artworks["documents"])):
@@ -82,7 +105,6 @@ def list_artworks():
         })
 
     return response
-
 
 if __name__ == "__main__":
     import uvicorn

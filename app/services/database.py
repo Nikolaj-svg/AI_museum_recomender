@@ -1,6 +1,6 @@
 import chromadb
 import requests
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 from sentence_transformers import SentenceTransformer
 from app.services.wikidata import search_artworks_by_museum
 
@@ -11,12 +11,12 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 db = chromadb.PersistentClient(path="data/chroma_db")
 collection = db.get_or_create_collection(name="museum_data")
 
-translator = Translator()
+translator = GoogleTranslator(source="auto", target="en")
 
 def translate_query(query):
     """Переводит запрос на английский перед поиском"""
     translated = translator.translate(query, src="ru", dest="en")
-    return translated.text
+    return translated
 
 def save_artworks_from_museum(museum_name):
     """Загружает все произведения из Wikidata и сохраняет в ChromaDB"""
