@@ -1,8 +1,4 @@
 import chromadb
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import TextLoader
 import os
 
 # Инициализация базы ChromaDB

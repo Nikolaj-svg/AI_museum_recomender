@@ -101,6 +101,41 @@ MUSEUM_QID = {
     "museo de la evolución humana": "Q1104997"
 }
 
+def search_artist_info(artist_name):
+    """Ищет информацию о художнике в Wikidata."""
+    query = f"""
+    SELECT ?artist ?artistLabel ?birthDate ?deathDate ?movementLabel ?workLabel WHERE {{
+      ?artist wdt:P106 wd:Q1028181;
+              rdfs:label "{artist_name}"@en.
+      OPTIONAL {{ ?artist wdt:P569 ?birthDate. }}
+      OPTIONAL {{ ?artist wdt:P570 ?deathDate. }}
+      OPTIONAL {{ ?artist wdt:P135 ?movement. }}
+      OPTIONAL {{ ?artist wdt:P800 ?work. }}
+      SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+    }}
+    LIMIT 1
+    """
+    
+    headers = {"User-Agent": "MuseumDataCollector/1.0"}
+    response = requests.get(WIKIDATA_SPARQL_URL, params={"query": query, "format": "json"}, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        if not data["results"]["bindings"]:
+            return {"error": "Информация о художнике не найдена."}
+
+        artist_data = data["results"]["bindings"][0]
+        return {
+            "name": artist_name,
+            "birth_date": artist_data.get("birthDate", {}).get("value", "Неизвестно"),
+            "death_date": artist_data.get("deathDate", {}).get("value", "Неизвестно"),
+            "movement": artist_data.get("movementLabel", {}).get("value", "Неизвестно"),
+            "notable_work": artist_data.get("workLabel", {}).get("value", "Нет информации"),
+        }
+    
+    return {"error": f"Ошибка запроса: {response.status_code}"}
+
+
 
 def search_artworks_by_museum(museum_name):
     """Запрашивает произведения искусства в указанном музее через Wikidata"""

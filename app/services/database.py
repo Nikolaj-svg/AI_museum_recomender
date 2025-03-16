@@ -1,5 +1,4 @@
 import chromadb
-import requests
 from deep_translator import GoogleTranslator
 from sentence_transformers import SentenceTransformer
 from app.services.wikidata import search_artworks_by_museum
