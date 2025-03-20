@@ -35,24 +35,18 @@ git clone https://github.com/username/ai-museum-recommender.git
 cd ai-museum-recommender
 ```
 
-### 2️⃣ Установка зависимостей (Backend)
-Создайте виртуальное окружение:
-```sh
-python -m venv venv
-source venv/bin/activate  # macOS/Linux
-venv\Scripts\activate  # Windows
-```
-Установите библиотеки:
-```sh
-pip install -r requirements.txt
+### 2️⃣ Создание .env файла
+```plaintext
+TOGETHER_API_KEY=toghether_api_key_example
 ```
 
 ### 3️⃣ Запуск бэкенда
 ```sh
-uvicorn app.main:app --reload
+docker-compose up -d build
 ```
+Если есть ошибка, значит надо расшарить директорию в докер(в ошибке подробно описано куда жать)
 📌 **API будет доступно по адресу:**  
-http://127.0.0.1:8000/docs (Swagger UI)
+http://0.0.0.0:8000/docs (Swagger UI)
 
 ---
 

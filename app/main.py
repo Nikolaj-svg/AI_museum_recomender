@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.services.database import collection, search_artwork, save_artworks_from_museum
+from services.database import collection, search_artwork, save_artworks_from_museum
 import together
 import re
 import os

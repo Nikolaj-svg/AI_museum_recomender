@@ -1,7 +1,7 @@
 import chromadb
 from deep_translator import GoogleTranslator
 from sentence_transformers import SentenceTransformer
-from app.services.wikidata import search_artworks_by_museum
+from services.wikidata import search_artworks_by_museum
 
 # Загружаем модель для векторного поиска
 model = SentenceTransformer("all-MiniLM-L6-v2")
